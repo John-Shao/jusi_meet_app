@@ -1,33 +1,29 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
+    # AK/SK配置
+    account_id: str = ""
+    volc_ak: str = ""
+    volc_sk: str = ""
+
     # RTC配置
     rtc_app_id: str = ""
     rtc_app_key: str = ""
-    rtc_access_key_id: str = ""
-    rtc_access_key_secret: str = ""
-    rtc_account_id: str = ""
-    
-    # TOS配置
-    tos_access_key_id: str = ""
-    tos_access_key_secret: str = ""
-    tos_account_id: str = ""
-    tos_region: str = ""
-    tos_endpoint: str = ""
-    tos_bucket: str = ""
     
     # 火山引擎SMS服务配置
-    volc_ak: str = ""
-    volc_sk: str = ""
-    sms_signature: str = ""
-    sms_template_id: str = ""
+    sms_account: str = "8880e180"
+    sms_scene: str = "注册验证码"
+    sms_signature: str = "巨思人工智能"
+    sms_template_id: str = "S1T_1y2p1bc526ebm"
+    sms_expire_time: int = 600  # 验证码有效时间，单位秒
+    sms_try_count: int = 5  # 验证码可以尝试验证次数
 
     # 其他配置项
-    debug: bool = True
     app_name: str = "JUSI RTS"
     app_version: str = "1.0.0"
     bind_addr: str = "0.0.0.0"
     bind_port: int = 8000
+    debug: bool = True
     
     # 指定配置文件和相关参数
     class Config:

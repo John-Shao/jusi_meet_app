@@ -14,8 +14,8 @@ from models import (
     UserInfo,
     RTSState,
     AppSet,
-    SMSVerificationCodeRequest,
-    UsernamePasswordRequest,
+    SendSmsVerifyCodeRequest,
+    SmsVerifyCodeLoginRequest,
     EventName
 )
 from utils import generate_user_id, generate_login_token, parse_content, current_timestamp
@@ -28,8 +28,8 @@ from log_mw import RequestLoggingMiddleware
 log_level = logging.DEBUG if settings.debug else logging.WARNING
 logging.basicConfig(
     level=log_level,
-    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
 )
 logger = logging.getLogger(__name__)
 
@@ -117,10 +117,54 @@ async def login(request: RequestModel):
             response=user_info
         )
     
-    elif event_name == EventName.SMS_VERIFICATION_LOGIN:
+    elif event_name == EventName.SEND_SMS_VERIFY_CODE:
+        try:
+            send_sms_data = SendSmsVerifyCodeRequest(**content)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid request data: {str(e)}")
+        
+        # 调用火山引擎SendSmsVerifyCode接口
+        try:
+            # 初始化火山引擎SMS服务
+            sms_service = SmsService()
+            sms_service.set_ak(settings.volc_ak)
+            sms_service.set_sk(settings.volc_sk)
+            
+            # 准备发送验证码的参数
+            send_params = {
+                "SmsAccount": settings.sms_account,         # 消息组ID（验码主键之一）
+                "Sign": settings.sms_signature,             # 短信签名，巨思人工智能
+                "TemplateID": settings.sms_template_id,     # 验证码模板ID
+                "PhoneNumber": send_sms_data.phone_number,  # 接收手机号，不支持批量发送（验码主键之一）
+                "Scene": settings.sms_scene,                # 验证码使用场景（验码主键之一）
+                "ExpireTime": settings.sms_expire_time,     # 验证码有效时间，单位秒
+                "TryCount": settings.sms_try_count,         # 验证码可以尝试验证次数
+                "Tag": ""                                   # 透传字段
+            }
+            
+            # 调用火山引擎发送验证码接口
+            response = sms_service.send_sms_verify_code(json.dumps(send_params))
+            
+            # 检查发送响应
+            if response.get("ResponseMetadata", {}).get("Error"):
+                error_code = response["ResponseMetadata"]["Error"].get("Code", "未知错误")
+                error_msg = response["ResponseMetadata"]["Error"].get("Message", "验证码发送失败")
+                error_info = f"{error_code}: {error_msg}"
+                raise HTTPException(status_code=400, detail=f"SMS send failed: {error_info}")
+            
+            return ResponseModel(
+                code=200,
+                message="验证码发送成功"
+            )
+            
+        except Exception as e:
+            logger.error(f"发送验证码失败: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"SMS send failed: {str(e)}")
+    
+    elif event_name == EventName.SMS_VERIFY_CODE_LOGIN:
         # 手机验证码登录
         try:
-            sms_login_data = SMSVerificationCodeRequest(**content)
+            sms_login_data = SmsVerifyCodeLoginRequest(**content)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid request data: {str(e)}")
         
@@ -132,32 +176,38 @@ async def login(request: RequestModel):
             sms_service.set_sk(settings.volc_sk)
             
             # 验证验证码
-            # 注意：具体的验证接口需要根据火山引擎SMS服务的实际API进行调整
-            # 这里只是一个示例
             verify_params = {
-                "PhoneNumber": sms_login_data.phone_number,
-                "Code": sms_login_data.verification_code,
-                "Signature": settings.sms_signature,
-                "TemplateID": settings.sms_template_id
+                "SmsAccount": settings.sms_account,          # 消息组ID（验码主键之一）
+                "PhoneNumber": sms_login_data.phone_number,  # 接收手机号（验码主键之一）
+                "Scene": settings.sms_scene,                 # 验证码使用场景（验码主键之一）
+                "Code": sms_login_data.verify_code           # 待校验验证码
             }
             
             # 调用验证接口
-            # response = sms_service.verify_sms_code(verify_params)
-            # 由于是示例，这里我们假设验证总是成功
-            # 实际项目中需要替换为真实的API调用
+            response = sms_service.check_sms_verify_code(json.dumps(verify_params))
+            
+            # 检查验证响应
+            if response.get("ResponseMetadata", {}).get("Error"):
+                error_code = response["ResponseMetadata"]["Error"].get("Code", "未知错误")
+                error_msg = response["ResponseMetadata"]["Error"].get("Message", "验证码验证失败")
+                error_info = f"{error_code}: {error_msg}"
+                raise HTTPException(status_code=400, detail=f"SMS verify failed: {error_info}")
+            
+            # 检查校验结果
+            if response.get("Result") == "1":
+                raise HTTPException(status_code=401, detail="验证码错误")
+            elif response.get("Result") == "2":
+                raise HTTPException(status_code=402, detail="验证码过期")
             
             # 验证通过后，生成用户信息
             user_id = generate_user_id()
             login_token = generate_login_token()
             created_at = current_timestamp()
             
-            # 使用手机号作为用户名
-            user_name = sms_login_data.phone_number
-            
             # 存储用户信息
             user_info = UserInfo(
                 user_id=user_id,
-                user_name=user_name,
+                user_name=sms_login_data.phone_number,  # 使用手机号作为用户名
                 login_token=login_token,
                 created_at=created_at
             )
@@ -170,41 +220,8 @@ async def login(request: RequestModel):
             )
             
         except Exception as e:
+            logger.error(f"验证码验证失败: {str(e)}")
             raise HTTPException(status_code=500, detail=f"SMS verification failed: {str(e)}")
-    
-    elif event_name == EventName.USERNAME_PASSWORD_LOGIN:
-        # 用户名+密码登录
-        try:
-            username_password_data = UsernamePasswordRequest(**content)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Invalid request data: {str(e)}")
-        
-        # 验证用户名和密码
-        if username_password_data.username not in user_passwords_db:
-            raise HTTPException(status_code=401, detail="Invalid username or password")
-        
-        if user_passwords_db[username_password_data.username] != username_password_data.password:
-            raise HTTPException(status_code=401, detail="Invalid username or password")
-        
-        # 生成用户信息
-        user_id = generate_user_id()
-        login_token = generate_login_token()
-        created_at = current_timestamp()
-        
-        # 存储用户信息
-        user_info = UserInfo(
-            user_id=user_id,
-            user_name=username_password_data.username,
-            login_token=login_token,
-            created_at=created_at
-        )
-        users_db[login_token] = user_info
-        
-        return LoginReturn(
-            code=200,
-            message="ok",
-            response=user_info
-        )
     
     elif event_name == EventName.SET_APP_INFO:
         # 设置应用信息

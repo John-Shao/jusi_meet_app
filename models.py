@@ -5,8 +5,8 @@ from enum import Enum
 # 事件名称枚举
 class EventName(str, Enum):
     PASSWORD_FREE_LOGIN = "passwordFreeLogin"
-    SMS_VERIFICATION_LOGIN = "smsVerificationLogin"
-    USERNAME_PASSWORD_LOGIN = "usernamePasswordLogin"
+    SEND_SMS_VERIFY_CODE = "sendSmsVerifyCode"
+    SMS_VERIFY_CODE_LOGIN = "smsVerifyCodeLogin"
     SET_APP_INFO = "setAppInfo"
     CHANGE_USER_NAME = "changeUserName"
 
@@ -64,12 +64,11 @@ class RequestModel(BaseModel):
     event_name: EventName
     content: str
 
-# 手机验证码登录请求模型
-class SMSVerificationCodeRequest(BaseModel):
-    phone_number: str
-    verification_code: str
+# 发送验证码请求模型
+class SendSmsVerifyCodeRequest(BaseModel):
+    phone_number: str  # 手机号码
 
-# 用户名+密码登录请求模型
-class UsernamePasswordRequest(BaseModel):
-    username: str
-    password: str
+# 手机验证码登录请求模型
+class SmsVerifyCodeLoginRequest(BaseModel):
+    phone_number: str
+    verify_code: str
