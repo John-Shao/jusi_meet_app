@@ -5,10 +5,10 @@ from enum import Enum
 # 事件名称枚举
 class EventName(str, Enum):
     PASSWORD_FREE_LOGIN = "passwordFreeLogin"
+    SMS_VERIFICATION_LOGIN = "smsVerificationLogin"
+    USERNAME_PASSWORD_LOGIN = "usernamePasswordLogin"
     SET_APP_INFO = "setAppInfo"
     CHANGE_USER_NAME = "changeUserName"
-    SMS_VERIFICATION_CODE = "smsVerificationCode"
-    USERNAME_PASSWORD = "usernamePassword"
 
 # 通用响应模型
 class ResponseModel(BaseModel):

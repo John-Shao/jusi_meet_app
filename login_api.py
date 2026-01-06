@@ -117,7 +117,7 @@ async def login(request: RequestModel):
             response=user_info
         )
     
-    elif event_name == EventName.SMS_VERIFICATION_CODE:
+    elif event_name == EventName.SMS_VERIFICATION_LOGIN:
         # 手机验证码登录
         try:
             sms_login_data = SMSVerificationCodeRequest(**content)
@@ -172,7 +172,7 @@ async def login(request: RequestModel):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"SMS verification failed: {str(e)}")
     
-    elif event_name == EventName.USERNAME_PASSWORD:
+    elif event_name == EventName.USERNAME_PASSWORD_LOGIN:
         # 用户名+密码登录
         try:
             username_password_data = UsernamePasswordRequest(**content)
