@@ -1,5 +1,14 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
+from enum import Enum
+
+# 事件名称枚举
+class EventName(str, Enum):
+    PASSWORD_FREE_LOGIN = "passwordFreeLogin"
+    SET_APP_INFO = "setAppInfo"
+    CHANGE_USER_NAME = "changeUserName"
+    SMS_VERIFICATION_CODE = "smsVerificationCode"
+    USERNAME_PASSWORD = "usernamePassword"
 
 # 通用响应模型
 class ResponseModel(BaseModel):
@@ -52,7 +61,7 @@ class ChangeUserNameRequest(BaseModel):
 
 # 通用请求模型
 class RequestModel(BaseModel):
-    event_name: str
+    event_name: EventName
     content: str
 
 # 手机验证码登录请求模型

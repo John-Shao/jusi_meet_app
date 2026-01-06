@@ -1,3 +1,6 @@
+import logging
+import json
+from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import json
@@ -12,14 +15,58 @@ from models import (
     RTSState,
     AppSet,
     SMSVerificationCodeRequest,
-    UsernamePasswordRequest
+    UsernamePasswordRequest,
+    EventName
 )
 from utils import generate_user_id, generate_login_token, parse_content, current_timestamp
-from config import APP_CONFIG
+from config import settings
 from volcengine.sms.SmsService import SmsService
+from log_mw import RequestLoggingMiddleware
+
+
+# 配置日志
+log_level = logging.DEBUG if settings.debug else logging.WARNING
+logging.basicConfig(
+    level=log_level,
+    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+
+# 定义Lifespan事件
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """应用生命周期事件"""
+
+    # 启动事件
+    logger.info(f"启动 {settings.app_name} v{settings.app_version}")
+    
+    # 连接 Redis
+    # await manager.connect_redis()
+    
+    # 启动心跳监控
+    #await manager.start_heartbeat_monitor()
+    
+    logger.info("应用启动完成")
+    
+    yield  # 应用运行中
+    
+    # 关闭事件
+    logger.info("应用正在关闭...")
+    
+    # 关闭所有 WebSocket 连接
+    #for connection_id in list(manager.active_connections.keys()):
+    #    await manager.disconnect(connection_id, reason="服务器关闭")
+    
+    logger.info("应用已关闭")
+
 
 # 创建FastAPI应用
-app = FastAPI(title="Meeting API", version="1.0.0")
+app = FastAPI(
+    title=settings.app_name,
+    version=settings.app_version,
+    lifespan=lifespan
+    )
 
 # 配置CORS
 app.add_middleware(
@@ -29,6 +76,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 添加DBUG中间件
+app.add_middleware(RequestLoggingMiddleware)
 
 # 模拟用户存储
 users_db = {}
@@ -41,7 +91,7 @@ async def login(request: RequestModel):
     event_name = request.event_name
     content = parse_content(request.content)
     
-    if event_name == "passwordFreeLogin":
+    if event_name == EventName.PASSWORD_FREE_LOGIN:
         # 免密登录
         user_name = content.get("user_name")
         if not user_name:
@@ -67,7 +117,7 @@ async def login(request: RequestModel):
             response=user_info
         )
     
-    elif event_name == "smsVerificationCode":
+    elif event_name == EventName.SMS_VERIFICATION_CODE:
         # 手机验证码登录
         try:
             sms_login_data = SMSVerificationCodeRequest(**content)
@@ -78,8 +128,8 @@ async def login(request: RequestModel):
         try:
             # 初始化火山引擎SMS服务
             sms_service = SmsService()
-            sms_service.set_ak(APP_CONFIG.get("VOLC_AK"))
-            sms_service.set_sk(APP_CONFIG.get("VOLC_SK"))
+            sms_service.set_ak(settings.volc_ak)
+            sms_service.set_sk(settings.volc_sk)
             
             # 验证验证码
             # 注意：具体的验证接口需要根据火山引擎SMS服务的实际API进行调整
@@ -87,8 +137,8 @@ async def login(request: RequestModel):
             verify_params = {
                 "PhoneNumber": sms_login_data.phone_number,
                 "Code": sms_login_data.verification_code,
-                "Signature": APP_CONFIG.get("SMS_SIGNATURE"),
-                "TemplateID": APP_CONFIG.get("SMS_TEMPLATE_ID")
+                "Signature": settings.sms_signature,
+                "TemplateID": settings.sms_template_id
             }
             
             # 调用验证接口
@@ -122,7 +172,7 @@ async def login(request: RequestModel):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"SMS verification failed: {str(e)}")
     
-    elif event_name == "usernamePassword":
+    elif event_name == EventName.USERNAME_PASSWORD:
         # 用户名+密码登录
         try:
             username_password_data = UsernamePasswordRequest(**content)
@@ -156,7 +206,7 @@ async def login(request: RequestModel):
             response=user_info
         )
     
-    elif event_name == "setAppInfo":
+    elif event_name == EventName.SET_APP_INFO:
         # 设置应用信息
         try:
             set_app_info_data = SetAppInfoRequest(**content)
@@ -189,7 +239,7 @@ async def login(request: RequestModel):
             response=rts_state
         )
     
-    elif event_name == "changeUserName":
+    elif event_name == EventName.CHANGE_USER_NAME:
         # 修改用户名
         try:
             change_name_data = ChangeUserNameRequest(**content)
@@ -215,4 +265,9 @@ async def login(request: RequestModel):
 # 启动应用
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host=settings.bind_addr,
+        port=settings.bind_port,
+        log_level=log_level,
+        )
