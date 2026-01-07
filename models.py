@@ -5,8 +5,8 @@ from enum import Enum
 # 事件名称枚举
 class EventName(str, Enum):
     PASSWORD_FREE_LOGIN = "passwordFreeLogin"
-    SEND_SMS_VERIFY_CODE = "sendSmsVerifyCode"
-    SMS_VERIFY_CODE_LOGIN = "smsVerifyCodeLogin"
+    SEND_SMS_CODE = "sendSmsCode"
+    SMS_CODE_LOGIN = "smsCodeLogin"
     SET_APP_INFO = "setAppInfo"
     CHANGE_USER_NAME = "changeUserName"
 
@@ -34,13 +34,6 @@ class SetAppInfoRequest(BaseModel):
     volc_ak: str
     volc_sk: str
     account_id: str
-    scenes_name: str
-
-# RTS应用设置模型
-class AppSet(BaseModel):
-    app_id: str
-    rts_token: str
-    scenes_name: str
 
 # RTS状态响应模型
 class RTSState(BaseModel):
@@ -48,7 +41,6 @@ class RTSState(BaseModel):
     rts_token: Optional[str] = None
     server_signature: Optional[str] = None
     server_url: Optional[str] = None
-    app_set: Optional[List[AppSet]] = None
 
 # 设置应用信息响应模型
 class SetAppInfoReturn(ResponseModel):
@@ -66,9 +58,9 @@ class RequestModel(BaseModel):
 
 # 发送验证码请求模型
 class SendSmsVerifyCodeRequest(BaseModel):
-    phone_number: str  # 手机号码
+    phone: str  # 手机号码
 
 # 手机验证码登录请求模型
 class SmsVerifyCodeLoginRequest(BaseModel):
-    phone_number: str
-    verify_code: str
+    phone: str  # 手机号码
+    code: str   # 短信验证码

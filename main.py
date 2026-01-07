@@ -13,12 +13,17 @@ from models import (
     ChangeUserNameRequest,
     UserInfo,
     RTSState,
-    AppSet,
     SendSmsVerifyCodeRequest,
     SmsVerifyCodeLoginRequest,
     EventName
 )
-from utils import generate_user_id, generate_login_token, parse_content, current_timestamp
+from utils import (
+    generate_user_id,
+    generate_login_token,
+    generate_rts_token,
+    parse_content,
+    current_timestamp
+    )
 from config import settings
 from volcengine.sms.SmsService import SmsService
 from log_mw import RequestLoggingMiddleware
@@ -68,7 +73,7 @@ app = FastAPI(
     lifespan=lifespan
     )
 
-# 配置CORS
+# 配置CORS（跨域资源共享）
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 生产环境中应该限制为特定域名
@@ -77,47 +82,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 添加DBUG中间件
+# 添加Log中间件
 app.add_middleware(RequestLoggingMiddleware)
 
 # 模拟用户存储
 users_db = {}
-# 模拟用户密码存储（实际项目中应该加密存储）
-user_passwords_db = {}
 
 # 登录路由
 @app.post("/vertc_demo_me_os/login", tags=["login"])
 async def login(request: RequestModel):
     event_name = request.event_name
     content = parse_content(request.content)
-    
-    if event_name == EventName.PASSWORD_FREE_LOGIN:
-        # 免密登录
-        user_name = content.get("user_name")
-        if not user_name:
-            raise HTTPException(status_code=400, detail="Missing user_name")
-        
-        # 生成用户信息
-        user_id = generate_user_id()
-        login_token = generate_login_token()
-        created_at = current_timestamp()
-        
-        # 存储用户信息
-        user_info = UserInfo(
-            user_id=user_id,
-            user_name=user_name,
-            login_token=login_token,
-            created_at=created_at
-        )
-        users_db[login_token] = user_info
-        
-        return LoginReturn(
-            code=200,
-            message="ok",
-            response=user_info
-        )
-    
-    elif event_name == EventName.SEND_SMS_VERIFY_CODE:
+
+    # 发送短信验证码
+    if event_name == EventName.SEND_SMS_CODE:
         try:
             send_sms_data = SendSmsVerifyCodeRequest(**content)
         except Exception as e:
@@ -132,16 +110,16 @@ async def login(request: RequestModel):
             
             # 准备发送验证码的参数
             send_params = {
-                "SmsAccount": settings.sms_account,         # 消息组ID（验码主键之一）
-                "Sign": settings.sms_signature,             # 短信签名，巨思人工智能
-                "TemplateID": settings.sms_template_id,     # 验证码模板ID
-                "PhoneNumber": send_sms_data.phone_number,  # 接收手机号，不支持批量发送（验码主键之一）
-                "Scene": settings.sms_scene,                # 验证码使用场景（验码主键之一）
-                "ExpireTime": settings.sms_expire_time,     # 验证码有效时间，单位秒
-                "TryCount": settings.sms_try_count,         # 验证码可以尝试验证次数
-                "Tag": ""                                   # 透传字段
+                "SmsAccount": settings.sms_account,       # 消息组ID（验码主键之一）
+                "Sign": settings.sms_signature,           # 短信签名，巨思人工智能
+                "TemplateID": settings.sms_template_id,   # 验证码模板ID
+                "PhoneNumber": send_sms_data.phone,       # 接收手机号，不支持批量发送（验码主键之一）
+                "Scene": settings.sms_scene,              # 验证码使用场景（验码主键之一）
+                "ExpireTime": settings.sms_expire_time,   # 验证码有效时间，单位秒
+                "TryCount": settings.sms_try_count,       # 验证码可以尝试验证次数
+                "Tag": ""                                 # 透传字段
             }
-            
+            '''
             # 调用火山引擎发送验证码接口
             response = sms_service.send_sms_verify_code(json.dumps(send_params))
             
@@ -151,7 +129,7 @@ async def login(request: RequestModel):
                 error_msg = response["ResponseMetadata"]["Error"].get("Message", "验证码发送失败")
                 error_info = f"{error_code}: {error_msg}"
                 raise HTTPException(status_code=400, detail=f"SMS send failed: {error_info}")
-            
+            '''
             return ResponseModel(
                 code=200,
                 message="验证码发送成功"
@@ -161,8 +139,8 @@ async def login(request: RequestModel):
             logger.error(f"发送验证码失败: {str(e)}")
             raise HTTPException(status_code=500, detail=f"SMS send failed: {str(e)}")
     
-    elif event_name == EventName.SMS_VERIFY_CODE_LOGIN:
-        # 手机验证码登录
+    # 手机验证码登录
+    elif event_name == EventName.SMS_CODE_LOGIN:
         try:
             sms_login_data = SmsVerifyCodeLoginRequest(**content)
         except Exception as e:
@@ -177,12 +155,12 @@ async def login(request: RequestModel):
             
             # 验证验证码
             verify_params = {
-                "SmsAccount": settings.sms_account,          # 消息组ID（验码主键之一）
-                "PhoneNumber": sms_login_data.phone_number,  # 接收手机号（验码主键之一）
-                "Scene": settings.sms_scene,                 # 验证码使用场景（验码主键之一）
-                "Code": sms_login_data.verify_code           # 待校验验证码
+                "SmsAccount": settings.sms_account,   # 消息组ID（验码主键之一）
+                "PhoneNumber": sms_login_data.phone,  # 接收手机号（验码主键之一）
+                "Scene": settings.sms_scene,          # 验证码使用场景（验码主键之一）
+                "Code": sms_login_data.code           # 待校验验证码
             }
-            
+            '''
             # 调用验证接口
             response = sms_service.check_sms_verify_code(json.dumps(verify_params))
             
@@ -195,10 +173,10 @@ async def login(request: RequestModel):
             
             # 检查校验结果
             if response.get("Result") == "1":
-                raise HTTPException(status_code=401, detail="验证码错误")
+                raise HTTPException(status_code=411, detail="验证码错误")
             elif response.get("Result") == "2":
-                raise HTTPException(status_code=402, detail="验证码过期")
-            
+                raise HTTPException(status_code=412, detail="验证码过期")
+            '''
             # 验证通过后，生成用户信息
             user_id = generate_user_id()
             login_token = generate_login_token()
@@ -207,7 +185,7 @@ async def login(request: RequestModel):
             # 存储用户信息
             user_info = UserInfo(
                 user_id=user_id,
-                user_name=sms_login_data.phone_number,  # 使用手机号作为用户名
+                user_name=sms_login_data.phone,  # 使用手机号作为用户名
                 login_token=login_token,
                 created_at=created_at
             )
@@ -223,8 +201,8 @@ async def login(request: RequestModel):
             logger.error(f"验证码验证失败: {str(e)}")
             raise HTTPException(status_code=500, detail=f"SMS verification failed: {str(e)}")
     
+    # 设置应用信息
     elif event_name == EventName.SET_APP_INFO:
-        # 设置应用信息
         try:
             set_app_info_data = SetAppInfoRequest(**content)
         except Exception as e:
@@ -234,30 +212,28 @@ async def login(request: RequestModel):
         if set_app_info_data.login_token not in users_db:
             raise HTTPException(status_code=401, detail="Invalid login_token")
         
-        # 生成RTS状态信息
-        rts_token = generate_login_token()
-        app_set = AppSet(
-            app_id=set_app_info_data.app_id,
-            rts_token=rts_token,
-            scenes_name=set_app_info_data.scenes_name
-        )
+        # 获取用户信息
+        user_info = users_db[set_app_info_data.login_token]
         
+        # 生成RTS状态信息
+        rts_token = generate_rts_token(user_id=user_info.user_id)
+        
+        # 构建RTS状态响应
         rts_state = RTSState(
             app_id=set_app_info_data.app_id,
             rts_token=rts_token,
-            server_signature="demo_server_signature",
-            server_url="wss://demo.rts.volcvideo.com",
-            app_set=[app_set]
+            server_signature="temp_server_signature",  # 业务服务器签名，业务服务器暂时不校验签名
+            server_url="http://113.108.122.183:9000/api/v1/rts/message",  # 业务服务器地址，113.108.122.183为贾沛办公电脑的公网IP
         )
         
         return SetAppInfoReturn(
             code=200,
             message="ok",
-            response=rts_state
+            response=rts_state 
         )
     
+    # 修改用户名
     elif event_name == EventName.CHANGE_USER_NAME:
-        # 修改用户名
         try:
             change_name_data = ChangeUserNameRequest(**content)
         except Exception as e:
@@ -283,8 +259,10 @@ async def login(request: RequestModel):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        app,
+        "main:app",
         host=settings.bind_addr,
         port=settings.bind_port,
+        reload=settings.debug,
+        reload_dirs=["."],
         log_level=log_level,
         )

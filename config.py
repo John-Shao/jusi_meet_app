@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     sms_try_count: int = 5  # 验证码可以尝试验证次数
 
     # 其他配置项
+    token_expire_ts: int = 24 * 60 * 60
     app_name: str = "JUSI RTS"
     app_version: str = "1.0.0"
     bind_addr: str = "0.0.0.0"
