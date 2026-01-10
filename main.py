@@ -20,7 +20,7 @@ from models import (
 from utils import (
     generate_user_id,
     generate_login_token,
-    generate_rts_token,
+    generate_wildcard_token,
     parse_content,
     current_timestamp
     )
@@ -213,10 +213,10 @@ async def login(request: RequestModel):
             raise HTTPException(status_code=450, detail="Invalid login_token")
         
         # 获取用户信息
-        user_info = users_db[set_app_info_data.login_token]
+        user_info: UserInfo = users_db[set_app_info_data.login_token]
         
         # 生成RTS状态信息
-        rts_token = generate_rts_token(user_id=user_info.user_id)
+        rts_token = generate_wildcard_token(user_id=user_info.user_id)
         
         # 构建RTS状态响应
         rts_state = RTSState(
