@@ -223,7 +223,7 @@ async def login(request: RequestModel):
             app_id=set_app_info_data.app_id,
             rts_token=rts_token,
             server_signature="temp_server_signature",  # 业务服务器签名，业务服务器暂时不校验签名
-            server_url="http://113.108.122.183:9000/api/v1/rts/message",  # 业务服务器地址，113.108.122.183为贾沛办公电脑的公网IP
+            server_url="http://service.jusiai.com:9000/api/v1/rts/message",  # 业务服务器地址，113.108.122.183为贾沛办公电脑的公网IP
         )
         
         return SetAppInfoReturn(
