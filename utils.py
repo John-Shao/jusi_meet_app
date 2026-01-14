@@ -33,3 +33,9 @@ def parse_content(content: str) -> Dict[str, Any]:
 def current_timestamp() -> int:
     """获取当前时间戳"""
     return int(time.time())
+
+
+if __name__ == "__main__":
+    # 测试生成函数
+    rts_token = generate_wildcard_token("user_02")
+    print(f"RTS Token: {rts_token}")
