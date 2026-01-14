@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     bind_addr: str = "0.0.0.0"
     bind_port: int = 8000
+    rts_server_url: str = "http://113.108.122.183:9000/api/v1/rts/message"  
     debug: bool = True
     
     # 指定配置文件和相关参数

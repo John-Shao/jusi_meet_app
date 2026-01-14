@@ -3,7 +3,6 @@ import json
 from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import json
 from models import (
     RequestModel,
     LoginReturn,
@@ -223,7 +222,7 @@ async def login(request: RequestModel):
             app_id=set_app_info_data.app_id,
             rts_token=rts_token,
             server_signature="temp_server_signature",  # 业务服务器签名，业务服务器暂时不校验签名
-            server_url="http://service.jusiai.com:9000/api/v1/rts/message",  # 业务服务器地址，113.108.122.183为贾沛办公电脑的公网IP
+            server_url=settings.rts_server_url,
         )
         
         return SetAppInfoReturn(
