@@ -2,7 +2,6 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # AK/SK配置
-    account_id: str = ""
     volc_ak: str = ""
     volc_sk: str = ""
 
