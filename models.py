@@ -33,7 +33,7 @@ class SetAppInfoRequest(BaseModel):
     app_key: str
     volc_ak: str
     volc_sk: str
-    account_id: str
+    account_id: Optional[str] = None
 
 # RTS状态响应模型
 class RTSState(BaseModel):
