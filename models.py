@@ -12,8 +12,8 @@ class EventName(str, Enum):
 
 # 通用响应模型
 class ResponseModel(BaseModel):
-    code: int
-    message: str
+    code: int = 200
+    message: str = "ok"
 
 # 用户信息模型
 class UserInfo(BaseModel):

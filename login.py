@@ -160,7 +160,10 @@ async def login(request: RequestModel):
         
         # 验证登录令牌
         if set_app_info_data.login_token not in users_db:
-            raise HTTPException(status_code=450, detail="Invalid login_token")
+            return ResponseModel(
+                code=450,
+                message="Invalid login_token"
+            )
         
         # 获取用户信息
         user_info: UserInfo = users_db[set_app_info_data.login_token]
@@ -191,16 +194,16 @@ async def login(request: RequestModel):
         
         # 验证登录令牌
         if change_name_data.login_token not in users_db:
-            raise HTTPException(status_code=450, detail="Invalid login_token")
+            return ResponseModel(
+                code=450,
+                message="Invalid login_token"
+            )
         
         # 更新用户名
         user_info = users_db[change_name_data.login_token]
         user_info.user_name = change_name_data.user_name
         
-        return ResponseModel(
-            code=200,
-            message="ok"
-        )
+        return ResponseModel()
     
     else:
         raise HTTPException(status_code=400, detail=f"Unknown event_name: {event_name}")
