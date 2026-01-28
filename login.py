@@ -28,15 +28,23 @@ from utils import (
     )
 from config import settings
 from volcengine.sms.SmsService import SmsService
+from mysql_client import (
+    create_user,
+    get_user_info,
+    update_user_name,
+    get_user_by_phone,
+    update_login_time
+)
+from redis_client import (
+    set_login_token,
+    get_user_id_by_token
+)
 
 
 logger = logging.getLogger(__name__)
 
 login_router = APIRouter()
 
-
-# TOFIX: 模拟用户存储
-users_db = {}
 
 # 登录路由
 @login_router.post("/login", tags=["login"])
@@ -143,21 +151,49 @@ async def login(request: RequestModel):
                     code=440,
                     message="验证码过期，请重新发送验证码"
                 )
-            
-            # 验证通过后，生成用户信息
-            user_id = generate_user_id()
+
+            # 验证通过后，先通过手机号查询用户
+            user_info = await get_user_by_phone(sms_login_data.phone)
+
             login_token = generate_login_token()
-            created_at = current_timestamp()
-            
-            # 存储用户信息
-            user_info = UserInfo(
-                user_id=user_id,
-                user_name=sms_login_data.phone,  # 使用手机号作为用户名
-                login_token=login_token,
-                created_at=created_at
-            )
-            users_db[login_token] = user_info
-            
+
+            if user_info:
+                # 老用户：更新最后登录时间
+                update_success = await update_login_time(user_info.user_id)
+                if not update_success:
+                    logger.warning(f"Failed to update login time for user: {user_info.user_id}")
+            else:
+                # 新用户：创建用户记录
+                user_id = generate_user_id()
+                created_at = current_timestamp()
+
+                # 创建用户信息对象（不包含 login_token）
+                user_info = UserInfo(
+                    user_id=user_id,
+                    user_name=sms_login_data.phone,  # 使用手机号作为用户名
+                    phone=sms_login_data.phone,      # 设置手机号
+                    created_at=created_at
+                )
+
+                # 将用户信息存储到数据库
+                db_success = await create_user(user_info)
+                if not db_success:
+                    return ResponseModel(
+                        code=500,
+                        message="用户信息存储失败"
+                    )
+
+            # 将 login_token 存储到 Redis，设置 15 天过期
+            redis_success = await set_login_token(login_token, user_id)
+            if not redis_success:
+                return ResponseModel(
+                    code=500,
+                    message="登录令牌缓存失败"
+                )
+
+            # 返回用户信息时附加 login_token
+            user_info.login_token = login_token
+
             return LoginReturn(
                 code=200,
                 message="ok",
@@ -182,18 +218,16 @@ async def login(request: RequestModel):
                 message="Invalid request data: " + str(e)
             )
         
-        # 验证登录令牌
-        if set_app_info_data.login_token not in users_db:
+        # 从 Redis 验证登录令牌并获取 user_id
+        user_id = await get_user_id_by_token(set_app_info_data.login_token)
+        if user_id is None:
             return ResponseModel(
                 code=450,
                 message="Invalid login_token"
             )
         
-        # 获取用户信息
-        user_info: UserInfo = users_db[set_app_info_data.login_token]
-        
         # 生成RTS状态信息
-        rts_token = generate_wildcard_token(user_id=user_info.user_id)
+        rts_token = generate_wildcard_token(user_id=user_id)
         
         # 构建RTS状态响应
         rts_state = RTSState(
@@ -220,17 +254,22 @@ async def login(request: RequestModel):
                 message="Invalid request data: " + str(e)
             )
         
-        # 验证登录令牌
-        if change_name_data.login_token not in users_db:
+        # 从 Redis 验证登录令牌并获取 user_id
+        user_id = await get_user_id_by_token(change_name_data.login_token)
+        if user_id is None:
             return ResponseModel(
                 code=450,
                 message="Invalid login_token"
             )
-        
+
         # 更新用户名
-        user_info = users_db[change_name_data.login_token]
-        user_info.user_name = change_name_data.user_name
-        
+        success = await update_user_name(user_id, change_name_data.user_name)
+        if not success:
+            return ResponseModel(
+                code=500,
+                message="Failed to update user name"
+            )
+
         return ResponseModel()
     
     else:

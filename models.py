@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional
 from enum import Enum
 
 # 事件名称枚举
@@ -19,7 +19,8 @@ class ResponseModel(BaseModel):
 class UserInfo(BaseModel):
     user_id: str
     user_name: str
-    login_token: str
+    phone: Optional[str] = None  # 手机号
+    login_token: Optional[str] = None  # login_token 改为可选，存储在 Redis 中
     created_at: int
 
 # 登录响应模型

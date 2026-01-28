@@ -1,0 +1,47 @@
+# 登录服务器应用部署
+# 依赖于 jusi_infrastructure 项目提供的 MySQL 和 Redis 服务
+# 使用前请先启动基础设施项目：cd ../jusi_infrastructure && docker-compose up -d
+version: '3.8'
+
+services:
+  # 登录服务器
+  login_server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jusi_login_server
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # 数据库配置 - 使用外部基础设施服务的容器名
+      DB_HOST: jusi_mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-jusi}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-jusi_db}
+      # Redis配置 - 使用外部基础设施服务的容器名
+      REDIS_HOST: jusi_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_DECODE_RESPONSES: true
+      # 应用配置
+      BIND_ADDR: 0.0.0.0
+      BIND_PORT: 8000
+      DEBUG: ${DEBUG:-false}
+    ports:
+      - "${SERVER_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - jusi_shared_network
+
+networks:
+  jusi_shared_network:
+    external: true
+    name: jusi_shared_network
