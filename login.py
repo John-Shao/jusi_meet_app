@@ -49,7 +49,11 @@ async def login(request: RequestModel):
         try:
             send_sms_data = SendSmsVerifyCodeRequest(**content)
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Invalid request data: {str(e)}")
+            logger.error(f"Invalid request data: {str(e)}")
+            return ResponseModel(
+                code=400,
+                message="Invalid request data: " + str(e)
+            )
         
         # 调用火山引擎SendSmsVerifyCode接口
         try:
@@ -78,7 +82,7 @@ async def login(request: RequestModel):
                 error_code = response["ResponseMetadata"]["Error"].get("Code", "未知错误")
                 error_msg = response["ResponseMetadata"]["Error"].get("Message", "验证码发送失败")
                 error_info = f"{error_code}: {error_msg}"
-                raise HTTPException(status_code=400, detail=f"SMS send failed: {error_info}")
+                raise HTTPException(status_code=500, detail=f"SMS send failed: {error_info}")
             
             return ResponseModel(
                 code=200,
@@ -87,14 +91,21 @@ async def login(request: RequestModel):
             
         except Exception as e:
             logger.error(f"发送验证码失败: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"SMS send failed: {str(e)}")
+            return ResponseModel(
+                code=500,
+                message="验证码发送失败：" + str(e)
+            )
     
     # 手机验证码登录
     elif event_name == EventName.SMS_CODE_LOGIN:
         try:
             sms_login_data = SmsVerifyCodeLoginRequest(**content)
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Invalid request data: {str(e)}")
+            logger.error(f"Invalid request data: {str(e)}")
+            return ResponseModel(
+                code=400,
+                message="Invalid request data: " + str(e)
+            )
         
         # 验证验证码（这里应该调用火山引擎SMS服务进行验证）
         try:
@@ -119,13 +130,19 @@ async def login(request: RequestModel):
                 error_code = response["ResponseMetadata"]["Error"].get("Code", "未知错误")
                 error_msg = response["ResponseMetadata"]["Error"].get("Message", "验证码验证失败")
                 error_info = f"{error_code}: {error_msg}"
-                raise HTTPException(status_code=400, detail=f"SMS verify failed: {error_info}")
+                raise HTTPException(status_code=500, detail=f"SMS verify failed: {error_info}")
             
             # 检查校验结果
             if response.get("Result") == "1":
-                raise HTTPException(status_code=411, detail="验证码错误")
+                return ResponseModel(
+                    code=441,
+                    message="验证码不正确，请重新输入验证码"
+                )
             elif response.get("Result") == "2":
-                raise HTTPException(status_code=412, detail="验证码过期")
+                return ResponseModel(
+                    code=440,
+                    message="验证码过期，请重新发送验证码"
+                )
             
             # 验证通过后，生成用户信息
             user_id = generate_user_id()
@@ -149,14 +166,21 @@ async def login(request: RequestModel):
             
         except Exception as e:
             logger.error(f"验证码验证失败: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"SMS verification failed: {str(e)}")
+            return ResponseModel(
+                code=500,
+                message="验证码验证失败：" + str(e)
+            )
     
     # 设置应用信息
     elif event_name == EventName.SET_APP_INFO:
         try:
             set_app_info_data = SetAppInfoRequest(**content)
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Invalid request data: {str(e)}")
+            logger.error(f"Invalid request data: {str(e)}")
+            return ResponseModel(
+                code=400,
+                message="Invalid request data: " + str(e)
+            )
         
         # 验证登录令牌
         if set_app_info_data.login_token not in users_db:
@@ -190,7 +214,11 @@ async def login(request: RequestModel):
         try:
             change_name_data = ChangeUserNameRequest(**content)
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Invalid request data: {str(e)}")
+            logger.error(f"Invalid request data: {str(e)}")
+            return ResponseModel(
+                code=400,
+                message="Invalid request data: " + str(e)
+            )
         
         # 验证登录令牌
         if change_name_data.login_token not in users_db:
@@ -206,4 +234,8 @@ async def login(request: RequestModel):
         return ResponseModel()
     
     else:
-        raise HTTPException(status_code=400, detail=f"Unknown event_name: {event_name}")
+        logger.error(f"Unknown event_name: {event_name}")
+        return ResponseModel(
+            code=400,
+            message="Unknown event_name: " + event_name
+        )
