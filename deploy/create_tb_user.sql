@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS tb_user (
     updated_at BIGINT NOT NULL COMMENT '更新时间戳（秒）',
     last_login_at BIGINT DEFAULT NULL COMMENT '最后登录时间戳（秒）',
     is_active TINYINT(1) DEFAULT 1 COMMENT '是否激活：1-激活，0-停用',
-    INDEX idx_user_id (user_id),
+    UNIQUE KEY idx_user_id (user_id),
     UNIQUE KEY uk_phone (phone),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户信息表';
