@@ -75,7 +75,8 @@ app.add_middleware(
 )
 
 # 添加Log中间件
-app.add_middleware(RequestLoggingMiddleware)
+if settings.debug:
+    app.add_middleware(RequestLoggingMiddleware)
 
 # 注册路由
 app.include_router(login_router, prefix=settings.api_vstr, tags=["JUSI Login Server"])

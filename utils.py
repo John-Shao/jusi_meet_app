@@ -19,8 +19,8 @@ def generate_wildcard_token(user_id: str) -> str:
     room_id = "*"  # 将 roomId 置为"*"，表示对所有房间都有权限，详情：https://www.volcengine.com/docs/6348/70121?lang=zh
     atobj = AccessToken(settings.rtc_app_id, settings.rtc_app_key, room_id, user_id)
     atobj.add_privilege(PrivSubscribeStream, 0)
-    atobj.add_privilege(PrivPublishStream, int(time.time()) + settings.token_expire_ts)
-    atobj.expire_time(int(time.time()) + settings.token_expire_ts)  # TODO: 复用优化，将token放在redis中，设定过期时间
+    atobj.add_privilege(PrivPublishStream, int(time.time()) + settings.rtc_token_expire_ts)
+    atobj.expire_time(int(time.time()) + settings.rtc_token_expire_ts)  # TODO: 复用优化，将token放在redis中，设定过期时间
     return atobj.serialize()
 
 def parse_content(content: str) -> Dict[str, Any]:

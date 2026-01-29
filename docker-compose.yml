@@ -25,13 +25,8 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       REDIS_DB: ${REDIS_DB:-0}
-      REDIS_DECODE_RESPONSES: true
-      # 应用配置
-      BIND_ADDR: 0.0.0.0
-      BIND_PORT: 8000
-      DEBUG: ${DEBUG:-false}
     ports:
-      - "${SERVER_PORT:-8000}:8000"
+      - "${BIND_PORT:-8000}:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s

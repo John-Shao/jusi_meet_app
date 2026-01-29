@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     # RTC配置
     rtc_app_id: str
     rtc_app_key: str
+    rtc_token_expire_ts: int = 86400  # RTC token有效期（秒）
 
     # 火山引擎SMS服务配置
     sms_account: str = "8880e180"
@@ -28,21 +29,19 @@ class Settings(BaseSettings):
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 0
-    redis_password: str = ""
-    redis_decode_responses: bool = True
+    redis_password: str
 
     # Token配置
     login_token_expire_days: int = 15  # login_token有效期（天）
 
     # 其他配置项
     api_vstr: str = "/api/v1"
-    token_expire_ts: int = 24 * 60 * 60
     app_name: str = "JUSI RTS"
     app_version: str = "1.0.0"
     bind_addr: str = "0.0.0.0"
     bind_port: int = 8000
     rts_server_url: str = "http://service.jusiai.com:9000/api/v1/rts/message"
-    debug: bool = True
+    debug: bool = False
     
     # 指定配置文件和相关参数
     class Config:
