@@ -1,5 +1,5 @@
 # 使用官方 Python 运行时作为基础镜像
-FROM docker.xuanyuan.run/ubuntu/python:3.10-22.04_stable
+FROM docker.xuanyuan.run/library/python:3.12.12
 
 # 设置工作目录
 WORKDIR /app
