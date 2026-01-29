@@ -164,12 +164,12 @@ async def login(request: RequestModel):
                     logger.warning(f"Failed to update login time for user: {user_info.user_id}")
             else:
                 # 新用户：创建用户记录
-                user_id = generate_user_id()
+                new_user_id = generate_user_id()
                 created_at = current_timestamp()
 
                 # 创建用户信息对象（不包含 login_token）
                 user_info = UserInfo(
-                    user_id=user_id,
+                    user_id=new_user_id,
                     user_name=sms_login_data.phone,  # 使用手机号作为用户名
                     phone=sms_login_data.phone,      # 设置手机号
                     created_at=created_at
@@ -184,7 +184,7 @@ async def login(request: RequestModel):
                     )
 
             # 将 login_token 存储到 Redis，设置 15 天过期
-            redis_success = await set_login_token(login_token, user_id)
+            redis_success = await set_login_token(login_token, user_info.user_id)
             if not redis_success:
                 return ResponseModel(
                     code=500,

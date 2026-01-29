@@ -1,5 +1,5 @@
 # 使用官方 Python 运行时作为基础镜像
-FROM python:3.11-slim
+FROM docker.xuanyuan.run/ubuntu/python:3.10-22.04_stable
 
 # 设置工作目录
 WORKDIR /app
@@ -11,9 +11,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # 安装系统依赖
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt install curl -y
 
 # 复制依赖文件
 COPY requirements.txt .
