@@ -170,8 +170,8 @@ async def login(request: RequestModel):
                 # 创建用户信息对象（不包含 login_token）
                 user_info = UserInfo(
                     user_id=new_user_id,
-                    user_name=sms_login_data.phone,  # 使用手机号作为用户名
-                    phone=sms_login_data.phone,      # 设置手机号
+                    user_name=sms_login_data.phone[:4],  # 使用手机尾号号作为用户名
+                    phone=sms_login_data.phone,  # 设置手机号
                     created_at=created_at
                 )
 
