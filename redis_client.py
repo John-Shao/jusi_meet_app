@@ -79,7 +79,7 @@ async def set_login_token(login_token: str, user_id: str) -> bool:
         expire_seconds = settings.login_token_expire_days * 24 * 60 * 60
 
         await redis_client.client.setex(
-            name=f"login_token:{login_token}",
+            name=f"login:token:{login_token}",
             time=expire_seconds,
             value=user_id
         )
