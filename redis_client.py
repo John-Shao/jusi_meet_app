@@ -106,7 +106,7 @@ async def get_user_id_by_token(login_token: str) -> Optional[str]:
             logger.error("Redis client not initialized")
             return None
 
-        user_id = await redis_client.client.get(f"login_token:{login_token}")
+        user_id = await redis_client.client.get(f"login:token:{login_token}")
         return user_id
     except Exception as e:
         logger.error(f"Failed to get user_id by token: {str(e)}")
@@ -128,7 +128,7 @@ async def delete_login_token(login_token: str) -> bool:
             logger.error("Redis client not initialized")
             return False
 
-        result = await redis_client.client.delete(f"login_token:{login_token}")
+        result = await redis_client.client.delete(f"login:token:{login_token}")
         if result > 0:
             logger.info(f"Login token deleted: token={login_token[:8]}...")
             return True
@@ -153,7 +153,7 @@ async def token_exists(login_token: str) -> bool:
             logger.error("Redis client not initialized")
             return False
 
-        result = await redis_client.client.exists(f"login_token:{login_token}")
+        result = await redis_client.client.exists(f"login:token:{login_token}")
         return result > 0
     except Exception as e:
         logger.error(f"Failed to check token existence: {str(e)}")
@@ -177,7 +177,7 @@ async def refresh_token_expiry(login_token: str) -> bool:
 
         expire_seconds = settings.login_token_expire_days * 24 * 60 * 60
         result = await redis_client.client.expire(
-            name=f"login_token:{login_token}",
+            name=f"login:token:{login_token}",
             time=expire_seconds
         )
 
