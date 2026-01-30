@@ -9,6 +9,9 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
+# Redis Key 前缀常量
+LOGIN_TOKEN_PREFIX = "login:token:"
+
 
 class RedisClient:
     """Redis 客户端管理类"""
@@ -79,7 +82,7 @@ async def set_login_token(login_token: str, user_id: str) -> bool:
         expire_seconds = settings.login_token_expire_days * 24 * 60 * 60
 
         await redis_client.client.setex(
-            name=f"login:token:{login_token}",
+            name=f"{LOGIN_TOKEN_PREFIX}{login_token}",
             time=expire_seconds,
             value=user_id
         )
@@ -106,7 +109,7 @@ async def get_user_id_by_token(login_token: str) -> Optional[str]:
             logger.error("Redis client not initialized")
             return None
 
-        user_id = await redis_client.client.get(f"login:token:{login_token}")
+        user_id = await redis_client.client.get(f"{LOGIN_TOKEN_PREFIX}{login_token}")
         return user_id
     except Exception as e:
         logger.error(f"Failed to get user_id by token: {str(e)}")
@@ -128,7 +131,7 @@ async def delete_login_token(login_token: str) -> bool:
             logger.error("Redis client not initialized")
             return False
 
-        result = await redis_client.client.delete(f"login:token:{login_token}")
+        result = await redis_client.client.delete(f"{LOGIN_TOKEN_PREFIX}{login_token}")
         if result > 0:
             logger.info(f"Login token deleted: token={login_token[:8]}...")
             return True
@@ -153,7 +156,7 @@ async def token_exists(login_token: str) -> bool:
             logger.error("Redis client not initialized")
             return False
 
-        result = await redis_client.client.exists(f"login:token:{login_token}")
+        result = await redis_client.client.exists(f"{LOGIN_TOKEN_PREFIX}{login_token}")
         return result > 0
     except Exception as e:
         logger.error(f"Failed to check token existence: {str(e)}")
@@ -177,7 +180,7 @@ async def refresh_token_expiry(login_token: str) -> bool:
 
         expire_seconds = settings.login_token_expire_days * 24 * 60 * 60
         result = await redis_client.client.expire(
-            name=f"login:token:{login_token}",
+            name=f"{LOGIN_TOKEN_PREFIX}{login_token}",
             time=expire_seconds
         )
 
