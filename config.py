@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     bind_addr: str = "0.0.0.0"
     bind_port: int = 8000
     rts_server_url: str = "http://service.jusiai.com:9000/api/v1/rts/message"
-    debug: bool = False
+    debug: bool = True
     
     # 指定配置文件和相关参数
     class Config:
